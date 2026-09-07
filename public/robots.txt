@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rngdev.net/sitemap-index.xml

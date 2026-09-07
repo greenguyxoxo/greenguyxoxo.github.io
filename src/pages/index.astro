@@ -1,0 +1,39 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const posts = allPosts
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 5);
+
+const dateFormat: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+};
+---
+
+<BaseLayout title="rngdev">
+  <p class="tagline">Notes on building things, one post at a time.</p>
+
+  <ul class="post-list">
+    {
+      posts.map((post) => (
+        <li>
+          <a class="title" href={`/blog/${post.id}/`}>
+            {post.data.title}
+          </a>
+          <p class="post-meta">
+            {post.data.pubDate.toLocaleDateString('en-US', dateFormat)}
+          </p>
+          <p class="post-desc">{post.data.description}</p>
+        </li>
+      ))
+    }
+  </ul>
+
+  {posts.length === 0 && <p>No posts yet — check back soon.</p>}
+
+  <p style="margin-top: 2rem;"><a href="/blog">See all posts &rarr;</a></p>
+</BaseLayout>
