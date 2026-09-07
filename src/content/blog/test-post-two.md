@@ -1,4 +1,4 @@
-\---
+---
 
 title: "Test post two"
 
@@ -6,9 +6,9 @@ description: "Second test post, just to confirm multiple posts sort correctly."
 
 pubDate: 2026-09-09
 
-tags: \["test"]
+tags: ["test"]
 
-\---
+---
 
 
 
