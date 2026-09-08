@@ -4,10 +4,6 @@ title: "Test post one"
 
 description: "First test post to check the click-through works end to end."
 
-title: "This is a test for another title"
-
-description: "This is not a drill"
-
 pubDate: 2026-09-08
 
 tags: ["test"]
