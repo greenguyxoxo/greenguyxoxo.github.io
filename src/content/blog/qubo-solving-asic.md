@@ -5,6 +5,8 @@ pubDate: 2026-09-08
 tags: ["hardware", "optimization", "asic"]
 ---
 
+## What is QUBO?
+
 QUBO stands for Quadrature Unconstrained Binary Optimization. It's an unconstrained discrete optimization problem, a classic problem in quantum computing. 
 
 The problem goes like this:
@@ -39,4 +41,32 @@ Relationships:
 - $J = \frac{1}{2}Q$ with no diagonals.
 - So we can construct $H(s) = h^Ts + \frac{1}{2}s^TJs$ from just $Q$ 
 
+## Simulated Annealing
+
+To summarize from the previous part:
+- QUBO Problem → Q matrix → $\text{argmin}_{x}(x^T Qx)$ → $\text{argmin}_{s}(H(s))$ 
+
+We now have an evaluation function $H(s)$ that inputs a proposed solution $s$ and outputs energy $H(s)$. These are all the building blocks you need for meta-heuristic optimization. 
+
+Why Simulated Annealing?
+- For a greedy algorithm like gradient descent, you choose the path of least resistance 100% of the time. As in, you always "follow the gradient." This is great for convex and convex-like problems because you always know that the local minimum is also the global minimum. 
+- But for many discrete optimization problems, the energy landscape is somewhat more complicated, and gets much more complicated the larger the dataset is. Therefore, greedy methods like gradient descent will fail to capture the global minimum (or even an approximate global minimum) almost 100% of the time. 
+- This is where meta-heuristic methods become advantageous. The central premise of this is: 
+	- You will lose the deterministic time complexity. In exchange, you get a probabilistic advantage by strategically inserting randomness. 
+	- Simulated Annealing is a meta-heuristic that bets on "probabilistic convergence." As in, the acceptance of non-greedy steps follows a converging probabilistic model. You are therefore more likely to find the global solution because you cover more of the solution space by allowing non-greedy steps. 
+- In the world of meta-heuristics, time complexity is thrown out the window. Instead, the benchmark is time. 
+
+Explaining Simulated Annealing
+- We start with a randomized solution $s_{0}$. We can evaluate this solution with $H(s_{0}) = H_{0}$. These are the initial variables.
+- $\alpha$ is the cooling rate, which can be tuned. 
+- Loop:
+	- Start
+	- Randomize one of the spin states of $s_{0}$ to make $s_{1}$. Then find $\nabla H = H_{1} -H_{0}$ 
+	- If $\nabla H \le 0$, accept the spin change
+	- If $\nabla H>0$, conditionally accept the spin change according to the model $P = e^{-\alpha\cdot\nabla H/T}$ where $T$ is the "temperature" of the loop at a given step 
+	- $T_{new} = T_{old} \cdot \alpha$
+	- End
+- At the end of the loop, the temperature will have gone down to a threshold $T_{min}$. 
+
+This is the algorithm we'll be using, the algorithm at the core of the computation. 
 
