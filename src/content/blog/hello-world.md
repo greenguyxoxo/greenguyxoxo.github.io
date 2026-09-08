@@ -1,10 +1,9 @@
 ---
-title: "A little introduction"
+title: "hello, world"
 description: "The first post on rngdev — why this blog exists and what's coming next."
 pubDate: 2026-09-07
 tags: ["meta"]
 ---
-
 So the reason why my site is called RNG dev is because I originally wanted to make a game publishing company called RNG Devs with my buddy named Robo. So we would be R and G. Unfortunately I grew up and realized making a game company was not my true calling. But I still like the name. 
 
 ## What does this site have?
