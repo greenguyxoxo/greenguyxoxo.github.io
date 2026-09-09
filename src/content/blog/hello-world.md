@@ -1,6 +1,6 @@
 ---
-title: "hello, world"
-description: "The first post on rngdev — why this blog exists and what's coming next."
+title: "An Introduction"
+description: "I hope you are entertained"
 pubDate: 2026-09-07
 tags: ["meta"]
 ---

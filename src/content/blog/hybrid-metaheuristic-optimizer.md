@@ -1,6 +1,6 @@
 ---
 title: "Hybrid Metaheuristic Optimizer"
-description: "Notes on combining multiple metaheuristic algorithms into a single hybrid optimizer."
+description: "For discrete unconstrained optimization problems"
 pubDate: 2026-09-08
 tags: ["optimization", "algorithms"]
 ---

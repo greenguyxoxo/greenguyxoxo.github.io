@@ -1,6 +1,6 @@
 ---
 title: "Digital Towed Array"
-description: "Notes on a digital towed array system for underwater acoustic sensing."
+description: "A low frequency sensor made to hunt for submarines"
 pubDate: 2026-09-08
 tags: ["signal-processing", "acoustics"]
 ---

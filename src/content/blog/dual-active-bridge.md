@@ -1,8 +1,8 @@
 ---
 title: "Dual Active Bridge"
-description: "Notes on a dual active bridge converter for bidirectional DC-DC power conversion."
+description: "DAB for short. Remember when dabbing was a thing?"
 pubDate: 2026-09-08
-tags: ["hardware", "power-electronics"]
+tags: ["hardware", "power-electronics", "firmware"]
 ---
 
 ## Why Dual Active Bridge?
