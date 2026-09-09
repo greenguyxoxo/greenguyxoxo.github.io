@@ -70,3 +70,44 @@ Explaining Simulated Annealing
 
 This is the algorithm we'll be using, the algorithm at the core of the computation. 
 
+## Verilog Implementation
+
+The starting implementation will be a random 5 x 5 Q matrix, representing an arbitrary QUBO problem. We can assume the Q matrix is diagonal and correctly encodes the QUBO weights and correlations. The entries in the matrix are whole integers that can be negative, positive, or zero, and can go up to the value 30. 
+
+--- 
+
+LFSR: 
+
+The "stochasticity" of this stochastic optimizer comes from a random number generator. Specifically, it uses a Fibonacci LFSR, an X-bit long register with a Y-bit long XOR operation that supplies the next bit value after shifting a register to the left.
+
+From a starting seed (input of bits in the register), the LFSR can generate a cyclical random sequence of bits. Most importantly, it will never get stuck. For this implementation, it uses an 8-bit LFSR with a 4-bit input XOR. This can generate a random bit cycle of length 255, before repeating its values, meaning it will take 255 clock cycles before the output starts becoming deterministic. Thus, it is not a truly random number generator. The width of the LFSR can increase to exponentially increase the # of clock cycles, which can, in practice, make this a random number generator.  
+
+The output of the LFSR supplies both the spin update (spin flip operation) and the Metropolis test (probabilistic choice after checking if the energy is lower). 
+
+--- 
+
+State Machine:
+
+Let's start with some instantiation. 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
+
+Next we start doing spin updates. We have 5 spin updates in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
+
+Next we do temperature cooling. We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
+
+Notice that we don't compute a new $x^TQx$ or a $H(s)$ every time. We want to avoid computationally expensive operations wherever we can, and we can in this case by finding the relationship between the Ising Hamiltonian and the QUBO Argmin. That relationship turns out to be a few linear relationships that don't even involve integer or matrix multiplication. That is huge! 
+
+---------------------------------------------
+Performance Benchmarks
+
+Input: 5 x 5 Q Matrix 
+- q00 = -27, q01 = 22, q02 = -27, q03 = 12, q04 = -20
+- q11 = 17, q12 = -26, q13 = 1, q14 = 30
+- q22 = 9, q23 = 15, q24 = 16
+- q33 = -4, q34 = 13
+- q44 =-5
+
+Initial Solution Vector:
+- {1,1,1,1,1} 
+
+On average, the optimizer reached the solution after 40 temperature steps. The total # of spin flips during the run was 186. The final solution was {1,0,1,0,1}. The brute force approach also reached the final solution {1,0,1,0,1}. 
+
