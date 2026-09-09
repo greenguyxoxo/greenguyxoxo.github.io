@@ -1,13 +1,13 @@
 ---
 title: "QUBO Solving ASIC"
-description: "Notes on designing a custom ASIC for solving Quadratic Unconstrained Binary Optimization problems in hardware."
+description: "From graph theory, to physics, to HDL"
 pubDate: 2026-09-08
-tags: ["hardware", "optimization", "asic"]
+tags: ["ASIC", "Discrete Optimization", "Graph Optimization"] 
 ---
 
 ## What is QUBO?
 
-QUBO stands for Quadrature Unconstrained Binary Optimization. It's an unconstrained discrete optimization problem, a classic problem in quantum computing. 
+QUBO stands for Quadrature Unconstrained Binary Optimization. It's an unconstrained discrete optimization problem. 
 
 The problem goes like this:
 - We're given an n x n matrix $Q$ that encodes the weights of a min/max problem
@@ -40,6 +40,7 @@ Relationships:
 - $h = \frac{1}{2}Q (1)$ 
 - $J = \frac{1}{2}Q$ with no diagonals.
 - So we can construct $H(s) = h^Ts + \frac{1}{2}s^TJs$ from just $Q$ 
+- Note that these relationships will be used to make some clever shortcuts later. 
 
 ## Simulated Annealing
 
@@ -56,7 +57,7 @@ Why Simulated Annealing?
 	- Simulated Annealing is a meta-heuristic that bets on "probabilistic convergence." As in, the acceptance of non-greedy steps follows a converging probabilistic model. You are therefore more likely to find the global solution because you cover more of the solution space by allowing non-greedy steps. 
 - In the world of meta-heuristics, time complexity is thrown out the window. Instead, the benchmark is time. 
 
-Explaining Simulated Annealing
+So how does Simulated Annealing work?
 - We start with a randomized solution $s_{0}$. We can evaluate this solution with $H(s_{0}) = H_{0}$. These are the initial variables.
 - $\alpha$ is the cooling rate, which can be tuned. 
 - Loop:
@@ -80,7 +81,9 @@ LFSR:
 
 The "stochasticity" of this stochastic optimizer comes from a random number generator. Specifically, it uses a Fibonacci LFSR, an X-bit long register with a Y-bit long XOR operation that supplies the next bit value after shifting a register to the left.
 
-From a starting seed (input of bits in the register), the LFSR can generate a cyclical random sequence of bits. Most importantly, it will never get stuck. For this implementation, it uses an 8-bit LFSR with a 4-bit input XOR. This can generate a random bit cycle of length 255, before repeating its values, meaning it will take 255 clock cycles before the output starts becoming deterministic. Thus, it is not a truly random number generator. The width of the LFSR can increase to exponentially increase the # of clock cycles, which can, in practice, make this a random number generator.  
+From a starting seed (input of bits in the register), the LFSR can generate a cyclical random sequence of bits. Most importantly, it will never get stuck. 
+- For this implementation, it uses an 8-bit LFSR with a 4-bit input XOR. This can generate a random bit cycle of length 255, before repeating its values, meaning it will take 255 clock cycles before the output starts becoming deterministic. Thus, it is not a truly random number generator
+- The width of the LFSR can increase to exponentially increase the # of clock cycles, which can, in practice, make this a random number generator.  
 
 The output of the LFSR supplies both the spin update (spin flip operation) and the Metropolis test (probabilistic choice after checking if the energy is lower). 
 
@@ -88,16 +91,24 @@ The output of the LFSR supplies both the spin update (spin flip operation) and t
 
 State Machine:
 
-Let's start with some instantiation. 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
+Let's start with some instantiation. 
+- 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. 
+- We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. 
+- We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). 
+- We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
 
-Next we start doing spin updates. We have 5 spin updates in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
+Next we start doing spin updates. 
+- We have 5 spin updates in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. 
+- Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
 
-Next we do temperature cooling. We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
+Next we do temperature cooling. 
+- We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. 
+- This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
 
 Notice that we don't compute a new $x^TQx$ or a $H(s)$ every time. We want to avoid computationally expensive operations wherever we can, and we can in this case by finding the relationship between the Ising Hamiltonian and the QUBO Argmin. That relationship turns out to be a few linear relationships that don't even involve integer or matrix multiplication. That is huge! 
 
 ---------------------------------------------
-Performance Benchmarks
+## Performance Benchmarks
 
 Input: 5 x 5 Q Matrix 
 - q00 = -27, q01 = 22, q02 = -27, q03 = 12, q04 = -20
