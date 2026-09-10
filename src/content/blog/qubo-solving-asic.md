@@ -73,12 +73,9 @@ This is the algorithm we'll be using, the algorithm at the core of the computati
 
 ## Verilog Implementation
 
-
-The starting implementation will be a random 5 x 5 Q matrix, representing an arbitrary QUBO problem. We can assume the Q matrix is diagonal and correctly encodes the QUBO weights and correlations. The entries in the matrix are whole integers that can be negative, positive, or zero, and can go up to the value 30. 
+The starting implementation will be a random 5 x 5 Q matrix, representing an arbitrary QUBO problem. We can assume the Q matrix is diagonal and correctly encodes the QUBO weights and correlations. The entries in the matrix are whole integers that can be negative, positive, or zero, and can go up to the value 32. 
 
 --- 
-
-LFSR: 
 
 The "stochasticity" of this stochastic optimizer comes from a random number generator. Specifically, it uses a Fibonacci LFSR, an X-bit long register with a Y-bit long XOR operation that supplies the next bit value after shifting a register to the left.
 
@@ -88,13 +85,18 @@ The output of the LFSR supplies both the spin update (spin flip operation) and t
 
 --- 
 
-State Machine:
+Let's start with some instantiation. 
+- 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. 
+- We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). 
+- We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
 
-Let's start with some instantiation. 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
+Next we start doing spin updates. 
+- We have 5 spin update module instantiations in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. 
+- In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
 
-Next we start doing spin updates. We have 5 spin updates in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
-
-Next we do temperature cooling. We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
+Next we do temperature cooling. 
+- We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. 
+- This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
 
 Notice that we don't compute a new $x^TQx$ or a $H(s)$ every time. We want to avoid computationally expensive operations wherever we can, and we can in this case by finding the relationship between the Ising Hamiltonian and the QUBO Argmin. That relationship turns out to be a few linear relationships that don't even involve integer or matrix multiplication. That is huge! 
 
@@ -119,15 +121,15 @@ Stochastic Optimizer (Simulated Annealing)
 Brute Force (Linear best search)
 - Cycles #: 33 (330 ns) 
 
-Optimized Solution Vector (both match):
+Optimized Solution Vector (both methods match):
 - {1,0,1,0,1}
 
 On average, the optimizer reached the solution after 4410 ns. The total # of spin flips during the run was 186. The final solution was {1,0,1,0,1}. The brute force approach also reached the final solution {1,0,1,0,1}. 
 
-In this case, the brute force solution was 13.4x faster. This makes sense, the solution space is only an 8-bit integer. So you may be wondering why we're taking so much extra effort when even a linear search was good enough. 
+In this case, the brute force solution was 13.4x faster. This makes sense, the solution space is only an 8-bit integer. So you may be wondering why we're taking so much extra effort when even a brute force search was faster. 
 
 --------------
-Now let's change our scale to a $Q$ matrix of $15 \times 15$ and compare the Optimizer algorithm vs. the Brute force approach. 
+Now let's make some changes. We'll change our scale to a $Q$ matrix of $15 \times 15$ (we're just adapting the $5 \times 5$ case to the new case, not changing any core computation), and compare the Simulated Annealing algorithm vs. the Brute Force approach. 
 
 Input: $15 \times 15$ Q matrix
 - 28,20,-24,19,-25,-3,20,-13,-11,-15,14,-16,31,-4,-2
@@ -157,9 +159,41 @@ Stochastic Optimizer (Simulated Annealing)
 Brute Force (Linear best search)
 - Cycles #: 32769 (32769 ns)
 
-Optimized Solution Vector (both match):
+Optimized Solution Vector (both methods match):
 - {1,1,0,1,1,1,1,1,0,0,1,0,1,0,1}
 
-On average, the optimizer reached the optimal solution after 4410 ns. The total # of spin flips during the run was 169. If you noticed, the convergence time was actually the same as the previous $5 \times 5$ case. This is because I didn't change the convergence runtime for the Simulated Annealing algorithm, meaning all the parameters were actually the same as the $5 \times 5$ version. And look at that, it still converged.  
+On average, the optimizer reached the optimal solution after 4410 ns. The total # of spin flips during the run was 169. If you noticed, the convergence time was actually the same as the previous $5 \times 5$ case. This is because I didn't change the convergence runtime for the Simulated Annealing algorithm, meaning all the parameters were actually the same as the $5 \times 5$ version (it ran for the same # of total steps). And look at that, it still converged.  
 
-In this case, the meta-heuristic solution was 74.3x faster. Look at that increase! Isn't that incredible.
+In this case, the simulated annealing solution was 74.3x faster. The search space for the brute force method exponentially scales to a linearly scaling increase in size, $O\log(2^n)$. 
+
+Keep in mind, this is before tuning and optimization. We could tune the initial solution vector to start at a more advantageous position to converge faster. We could tune the temperature cooling rate to the problem by perturbing and seeing which direction goes faster. We could also stack more compute modules in parallel.
+
+------------------------------------------
+Now for the final change. Let's move to a $30 \times 30$ Q matrix. At this point and beyond, brute force solutions become impractical. An exhausting search would take 1.07 billion steps, which is a complete waste of computational resources. Now we have to evaluate in the dark. 
+
+Input: (I'm not pasting the whole matrix)
+
+Initial Solution Vector:
+- {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
+Stochastic Optimizer (Simulated Annealing)
+- Convergence time: 4410 ns (this parameter didn't change)
+
+Optimized Solution Vector:
+- {1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,0}
+
+So how do we know if this is the optimal solution vector? Well, we don't. But we can try to see if we can find a better one by running the algorithm for longer.
+
+Let's extend the length of the algorithm by double to see what we get:
+
+Initial Solution Vector:
+- {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
+Stochastic Optimizer (Simulated Annealing)
+- Convergence time: 8410 ns (roughly double from before)
+- Accepted flips: 328 (compared to 190)
+
+Optimized Solution Vector:
+- {1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,0}
+
+I'll save you the time that it takes to check if the solutions are the same. They are. So it looks like the initial convergence is actually optimal. 
