@@ -21,4 +21,4 @@ Currently, my interests lie in:
 
 ## Warning about NDA's
 
-I cannot release the full contents of some of my work, as I work with companies that deal with defense, so some of it is under contract. I haven't gotten in trouble for it for now, but I don't wanna risk it. 
+I cannot release the full contents of some of my work (NDA). NDA content will be approximations or workflow explanations, not exhaustive design reviews.
