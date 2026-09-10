@@ -10,8 +10,8 @@ tags: ["ASIC", "Discrete Optimization", "Graph Optimization"]
 QUBO stands for Quadrature Unconstrained Binary Optimization. It's an unconstrained discrete optimization problem. 
 
 The problem goes like this:
-- We're given an n x n matrix $Q$ that encodes the weights of a min/max problem
-	- This problem can usually be represented as a graph with nodes A,B,C... and weights N_1, N_2... across each node
+- We're given an $n \times n$ matrix $Q$ that encodes the weights of a min/max problem
+	- This problem can usually be represented as a graph with nodes A,B,C... and weights $N_{1}$, $N_{2}$... across each node
 	- Keep in mind that obtaining the $Q$ matrix from a graph problem is itself a tricky problem. Usually the problems involve the relationship between nodes, themselves, and their neighbors, so we can usually represent "self weights" in the diagonal, and "relationship weights" in the non-diagonal. This may not always be the case. 
 	- For the rest of the project, we should assume we already have a correct $Q$ 
 	- $Q$ is usually symmetrical
@@ -196,4 +196,9 @@ Stochastic Optimizer (Simulated Annealing)
 Optimized Solution Vector:
 - {1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,0}
 
-I'll save you the time that it takes to check if the solutions are the same. They are. So it looks like the initial convergence is actually optimal. 
+I'll save you the time that it takes to check if the solutions are the same. They are. So it looks like the initial convergence is actually optimal (comparing with a longer-running algorithm). So assuming that the solution is at the global minimum (or close), the convergence rate is extremely fast and scales slower than the matrix size increase. 
+
+In the future, I will do a schematic level review and layout for hardware. This is the part I'm most excited about. 
+
+You can find the repo here:
+[QUBO Solver Verilog Implementation](https://github.com/greenguyxoxo/qubo_solve_verilog)
