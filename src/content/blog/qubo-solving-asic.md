@@ -73,6 +73,7 @@ This is the algorithm we'll be using, the algorithm at the core of the computati
 
 ## Verilog Implementation
 
+
 The starting implementation will be a random 5 x 5 Q matrix, representing an arbitrary QUBO problem. We can assume the Q matrix is diagonal and correctly encodes the QUBO weights and correlations. The entries in the matrix are whole integers that can be negative, positive, or zero, and can go up to the value 30. 
 
 --- 
@@ -81,9 +82,7 @@ LFSR:
 
 The "stochasticity" of this stochastic optimizer comes from a random number generator. Specifically, it uses a Fibonacci LFSR, an X-bit long register with a Y-bit long XOR operation that supplies the next bit value after shifting a register to the left.
 
-From a starting seed (input of bits in the register), the LFSR can generate a cyclical random sequence of bits. Most importantly, it will never get stuck. 
-- For this implementation, it uses an 8-bit LFSR with a 4-bit input XOR. This can generate a random bit cycle of length 255, before repeating its values, meaning it will take 255 clock cycles before the output starts becoming deterministic. Thus, it is not a truly random number generator
-- The width of the LFSR can increase to exponentially increase the # of clock cycles, which can, in practice, make this a random number generator.  
+From a starting seed (input of bits in the register), the LFSR can generate a cyclical random sequence of bits. Most importantly, it will never get stuck. For this implementation, it uses an 8-bit LFSR with a 4-bit input XOR. This can generate a random bit cycle of length 255, before repeating its values, meaning it will take 255 clock cycles before the output starts becoming deterministic. Thus, it is not a truly random number generator. The width of the LFSR can increase to exponentially increase the # of clock cycles, which can, in practice, make this a random number generator.  
 
 The output of the LFSR supplies both the spin update (spin flip operation) and the Metropolis test (probabilistic choice after checking if the energy is lower). 
 
@@ -91,26 +90,18 @@ The output of the LFSR supplies both the spin update (spin flip operation) and t
 
 State Machine:
 
-Let's start with some instantiation. 
-- 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. 
-- We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. 
-- We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). 
-- We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
+Let's start with some instantiation. 15-signed Q-port inputs create a 5 x 5 upper triangular matrix. Because the $Q$ matrix is diagonal, we can be more storage efficient by only storing the upper triangular. We set the number of temperature steps, the four states [S_IDLE], [S_RUN], [S_COOL], [S_DONE], and the register to store the states for updates in the FSM. We create $q_{00} \dots q_{{44}}$ as part of storage to compute $h_{0} \dots h_{4}$ (remember $h$ is part of the Ising Hamiltonian). We instantiate the spin register to store our solution, temperature register (16-bit integer), attempt count, and temperature count. Let's compute $h_{0} \dots h_{4}$ with a wire assignment $h_{0} = 2 \cdot q_{00} + q_{01} + q_{02} + q_{03} + q_{04}$, etc. Again, we know how to compute $h_{i}$ because of the relationship between the Ising Hamiltonian and the QUBO $\text{argmin x}$ formulation (which was given earlier). $h$ can be computed as a row product of $Q$. This means we don't have to completely recompute $H(s)$ every loop, which would be computationally wasteful.
 
-Next we start doing spin updates. 
-- We have 5 spin updates in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. 
-- Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
+Next we start doing spin updates. We have 5 spin updates in parallel, each one gets its own $h_{i}$, 4 couplings, 4 views of other spins, and a distinct LFSR seed for random number generation. Because this is hardware implemented, we can have as many spin updates in parallel as we like, we're not sequentially limited or limited by the number of cores. In theory, this could scale as much as can fit on a chip, which would drastically improve the convergence rate of the optimizer. 
 
-Next we do temperature cooling. 
-- We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. 
-- This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
+Next we do temperature cooling. We multiply the temperature by a fixed α cooling rate, represented by a 24-bit integer. We can tune the cooling rate according to performance. This is the only place on the chip where any integer is actually multiplied. This loop then goes back to the previous loop, or to the final loop where the output is given as $x_{out}$. 
 
 Notice that we don't compute a new $x^TQx$ or a $H(s)$ every time. We want to avoid computationally expensive operations wherever we can, and we can in this case by finding the relationship between the Ising Hamiltonian and the QUBO Argmin. That relationship turns out to be a few linear relationships that don't even involve integer or matrix multiplication. That is huge! 
 
 ---------------------------------------------
 ## Performance Benchmarks
 
-Input: 5 x 5 Q Matrix 
+Input: $5 \times 5$ Q Matrix 
 - q00 = -27, q01 = 22, q02 = -27, q03 = 12, q04 = -20
 - q11 = 17, q12 = -26, q13 = 1, q14 = 30
 - q22 = 9, q23 = 15, q24 = 16
@@ -120,5 +111,55 @@ Input: 5 x 5 Q Matrix
 Initial Solution Vector:
 - {1,1,1,1,1} 
 
-On average, the optimizer reached the solution after 40 temperature steps. The total # of spin flips during the run was 186. The final solution was {1,0,1,0,1}. The brute force approach also reached the final solution {1,0,1,0,1}. 
+Results:
 
+Stochastic Optimizer (Simulated Annealing) 
+- Cycles #: 441 (4410 ns)
+
+Brute Force (Linear best search)
+- Cycles #: 33 (330 ns) 
+
+Optimized Solution Vector (both match):
+- {1,0,1,0,1}
+
+On average, the optimizer reached the solution after 4410 ns. The total # of spin flips during the run was 186. The final solution was {1,0,1,0,1}. The brute force approach also reached the final solution {1,0,1,0,1}. 
+
+In this case, the brute force solution was 13.4x faster. This makes sense, the solution space is only an 8-bit integer. So you may be wondering why we're taking so much extra effort when even a linear search was good enough. 
+
+--------------
+Now let's change our scale to a $Q$ matrix of $15 \times 15$ and compare the Optimizer algorithm vs. the Brute force approach. 
+
+Input: $15 \times 15$ Q matrix
+- 28,20,-24,19,-25,-3,20,-13,-11,-15,14,-16,31,-4,-2
+- 20,8,0,5,3,0,31,19,18,12,7,-11,31,-3,-19
+- -24,0,11,22,-22,22,7,-25,-30,-4,-30,-23,0,30,-3
+- 19,5,22,25,19,26,20,8,-4,0,-15,-1,-8,-17,31
+- -25,3,-22,19,5,-32,-26,-20,30,12,24,-20,14,-9,-1
+- -3,0,22,26,-32,17,-32,7,21,10,-23,2,-15,29,24
+- 20,31,7,20,-26,-32,21,-21,0,28,22,13,8,-30,15
+- -13,19,-25,8,-20,7,-21,-18,-2,-27,-17,2,14,0,7
+- -11,18,-30,-4,30,21,0,-2,-29,23,11,-9,9,6,-26
+- -15,12,-4,0,12,10,28,-27,23,-13,-29,10,-8,6,-12
+- 14,7,-30,-15,24,-23,22,-17,11,-29,-14,-18,-23,-8,20
+- -16,-11,-23,-1,-20,2,13,2,-9,10,-18,23,-7,-8,4
+- 31,31,0,-8,14,-15,8,14,9,-8,-23,-7,26,30,-7
+- -4,-3,30,-17,-9,29,-30,0,6,6,-8,-8,30,-32,5
+- -2,-19,-3,31,-1,24,15,7,-26,-12,20,4,-7,5,-1
+
+Initial Solution Vector:
+- {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
+Results: 
+
+Stochastic Optimizer (Simulated Annealing)
+- Cycles #: 441 (4410 ns)
+
+Brute Force (Linear best search)
+- Cycles #: 32769 (32769 ns)
+
+Optimized Solution Vector (both match):
+- {1,1,0,1,1,1,1,1,0,0,1,0,1,0,1}
+
+On average, the optimizer reached the optimal solution after 4410 ns. The total # of spin flips during the run was 169. If you noticed, the convergence time was actually the same as the previous $5 \times 5$ case. This is because I didn't change the convergence runtime for the Simulated Annealing algorithm, meaning all the parameters were actually the same as the $5 \times 5$ version. And look at that, it still converged.  
+
+In this case, the meta-heuristic solution was 74.3x faster. Look at that increase! Isn't that incredible.
