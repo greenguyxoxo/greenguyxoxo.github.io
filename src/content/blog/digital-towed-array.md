@@ -1,8 +1,8 @@
 ---
 title: "Digital Towed Array"
-description: "A low frequency sensor made to hunt for submarines"
+description: "TinyML, Analog, Beamforming"
 pubDate: 2026-09-08
-tags: ["signal-processing", "acoustics"]
+tags: ["signal-processing", "acoustics", "TinyML]
 ---
 
 This article includes research done in collaboration by me and Supun Randeni, head research scientist of MIT Sea Grant. Much of the content here will be included in a paper publishing in the Fall of 2027.  

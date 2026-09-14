@@ -1,6 +1,6 @@
 ---
 title: "Dual Active Bridge"
-description: "DAB for short. Remember when dabbing was a thing?"
+description: "Power Electronics, Embedded, Controls"
 pubDate: 2026-09-08
 tags: ["hardware", "power-electronics", "firmware"]
 ---
