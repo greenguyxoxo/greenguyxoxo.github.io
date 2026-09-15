@@ -70,7 +70,7 @@ In the Digital Towed Array, each node acts as its own localized compute, and com
 
 ## Hardware Architecture 
 
-Each node has an STM32G431 as its local compute, and uses its ADC. It communicates to the master through RS-485. We use a charge amplifier at the pre-amp to condition the signal from a piezo-electric cylinder (which acts as a capacitive element). A power bus +5V and GND runs through the whole towed array. 
+Each node has an STM32G431 as its local compute, and uses its ADC. It communicates to the master through RS-485, and the data bus gets sent down the entire line. We use a charge amplifier at the pre-amp to condition the signal from a piezo-electric cylinder (which acts as a capacitive element). A power bus +5V and GND runs through the whole towed array. 
 
 A differential PPS line (pulse-per-second) acts as a ground truth clock, and synchronizes every node with the vehicle's clock. This synchronization is critical for beamforming because we need to preserve precise time information. Otherwise, beamforming is impossible. 
 
@@ -86,3 +86,25 @@ One of the unique benefits of the Digital Towed Array architecture is the abilit
 
 Furthermore, our data is relatively simple to process, giving it an advantage in speed.
 - Each node needs to process $S_{N}$, which can be encoded as an $M \times 1$ vector $V$. We can then run $V$ through a DNN.  
+
+
+-------------------------------------------------------------------------
+
+Let's explain this method using a simpler example: a waveform classifier. We'll run through the interpretation, and then an example in python. Then we'll try to fit it on the STM32G431 that we're using.  
+
+Example: we want to classify three types of waveforms from input data: sine waves, square waves, and sawtooth waves.
+- Our input $S$ is a $100 \times 1$ vector that encodes the input signal from the analog front end. In this example, we're feeding artificial inputs. 
+- We will categorize $S$ by feeding it into an MLP. 
+
+We can start with pre-processing. Lets subtract the input signal by the DC offset and divide the amplitude by the mean, so we can normalize. Now the signal only contains the conditions necessary to classify.
+
+The neural net is an 8,643 parameter model containing 5 layers: the input layer (100), three hidden layers (64, 32, 3), and the softmax output layer. Each layer has weight matrix $W_{N}$, and each layer is fully connected. In this case, we determined experimentally that the width of each layer has more impact on training accuracy than the number of layers, hence why it's shallow. 
+
+| Epoch | Training accuracy | Test accuracy |
+| ----- | ----------------- | ------------- |
+| 10    | 99.00%            | 97.5%         |
+| 20    | 99.62%            | 98.37%        |
+| 30    | 99.80%            | 98.53%        |
+| 40    | 99.77%            | 98.07%        |
+| 50    | 99.81%            | 98.53%        |
+So we can see that the model roughly converged in the first 10 epochs. This is a very simple example (that can easily fit on an STM32). 
