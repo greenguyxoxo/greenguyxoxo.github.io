@@ -100,6 +100,8 @@ We can start with pre-processing. Lets subtract the input signal by the DC offse
 
 The neural net is an 8,643 parameter model containing 5 layers: the input layer (100), three hidden layers (64, 32, 3), and the softmax output layer. Each layer has weight matrix $W_{N}$, and each layer is fully connected. In this case, we determined experimentally that the width of each layer has more impact on training accuracy than the number of layers, hence why it's shallow. 
 
+![Diagram of Simplified Model](/images/sta_mlp.png)
+
 | Epoch | Training accuracy | Test accuracy |
 | ----- | ----------------- | ------------- |
 | 10    | 99.00%            | 97.5%         |
