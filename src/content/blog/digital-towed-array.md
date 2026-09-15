@@ -72,7 +72,9 @@ In the Digital Towed Array, each node acts as its own localized compute, and com
 
 Each node has an STM32G431 as its local compute, and uses its ADC. It communicates to the master through RS-485, and the data bus gets sent down the entire line. We use a charge amplifier at the pre-amp to condition the signal from a piezo-electric cylinder (which acts as a capacitive element). A power bus +5V and GND runs through the whole towed array. 
 
-A differential PPS line (pulse-per-second) acts as a ground truth clock, and synchronizes every node with the vehicle's clock. This synchronization is critical for beamforming because we need to preserve precise time information. Otherwise, beamforming is impossible. 
+A differential PPS line (pulse-per-second) acts as a ground truth clock, and synchronizes every node with the vehicle's clock. This synchronization is critical for beamforming because we need to preserve precise time information. Otherwise, beamforming is impossible.
+
+![Diagram of Smart Towed Array](/images/STA/sta_diagram.png)
 
 ## From Digital to Smart Towed Array (STA)
 
@@ -100,7 +102,7 @@ We can start with pre-processing. Lets subtract the input signal by the DC offse
 
 The neural net is an 8,643 parameter model containing 5 layers: the input layer (100), three hidden layers (64, 32, 3), and the softmax output layer. Each layer has weight matrix $W_{N}$, and each layer is fully connected. In this case, we determined experimentally that the width of each layer has more impact on training accuracy than the number of layers, hence why it's shallow. 
 
-![Diagram of Simplified Model](/images/sta_mlp.png)
+![Diagram of Simplified Model](/images/STA/sta_mlp.png)
 
 | Epoch | Training accuracy | Test accuracy |
 | ----- | ----------------- | ------------- |
@@ -109,4 +111,6 @@ The neural net is an 8,643 parameter model containing 5 layers: the input layer 
 | 30    | 99.80%            | 98.53%        |
 | 40    | 99.77%            | 98.07%        |
 | 50    | 99.81%            | 98.53%        |
+
+
 So we can see that the model roughly converged in the first 10 epochs. This is a very simple example (that can easily fit on an STM32). 
