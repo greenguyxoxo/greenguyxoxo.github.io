@@ -5,6 +5,8 @@ pubDate: 2026-09-08
 tags: ["hardware", "power-electronics", "firmware"]
 ---
 
+![Dual Active Bridge Layout](/images/DAB/dab_layout.png)
+
 ## Why Dual Active Bridge?
 
 For this project, I wanted to deliver 3kW bi-directionally from 400V and 48V. This used for the Ulysses autonomous charging system. For the actual system, the design is different (so I'm not breaking any NDA's), but I used this design flow as a reference. 
@@ -31,6 +33,7 @@ The thickness of the traces are a big problem in planar transformers, with the w
 Gate drives tend be extremely similar no matter what topology, especially for non-isolated designs. You have a half bridge gate drive, with a series external capacitor and diode for bootstrap operation (some gate drivers have internal diodes, but usually never internal capacitors). These drive a half-bridge MOSFET configuration through series resistance, pulldown resistors, etc. The switching node between the top and bottom MOSFETs acts as the floating GND reference for the top MOSFET, so any gate drive components referencing the top MOSFET should be connected to the switching node acting as GND. On the PCB, the switching node should be as small as possible. The power loop for the gate should be as small as possible, with a short path back to the gate drive to minimize the loop inductance. The half-bridges should be laid out as symmetrically as possible. Components for the gate drive chip should be placed as close to the chip as possible, but the gate resistors in the switching path do not need to be placed so close. 
 
 For the low voltage bridge on the Dual Active Bridge, there is a maximum of 62A going through, which requires more careful consideration. Usually for high-current bridges, even if an individual MOSFET is rated for 60A on paper, it's never actually practical to use a single FET for 60A. It is a common practice to parallelize multiple MOSFETs per bridge to decrease the load going through each individual MOSFET. To get a good ballpark of what kind of parallel configuration can handle a given load, it is good to look at reference designs. I ended with two MOSFETs on each parallel branch, each rated to 40A. 
+
 ## Firmware and Controls 
 
 For the controls, I am using an STM32H7 series chip, which comes with advanced hardware timers TIM1 and TIM8, and 16-bit ADC's sampling far faster than the nyquist frequency for this design. Each timer comes with full-bridge PWM driving, programmable dead time insertion, and can be chained together with an internal hardware trigger. A hidden bonus is that the H7 series has a a lot of nice documentation. 
@@ -51,3 +54,5 @@ Lots of thermal things here. The primary bridge (high voltage) performed worse t
 ## Positioning Power in the Datacenter World
 
 I'm done talking about my design, this part's for the broader discussion of power in datacenters. I mentioned earlier that datacenters use DAB and DAB-derived topologies to perform voltage step-downs. As server racks move to higher voltage and as the power demand increases, efficient power conversion becomes ever more important. I'm especially intrigued by the effect that datacenter demand has had on power converter research. Over the last few years, a lot of progress has been made on efficient power conversion, one of the downstream effects of AI. I'm curious to see what advances happen next. 
+
+![Dual Active Bridge Layout](/images/DAB/dab_pic.png)
