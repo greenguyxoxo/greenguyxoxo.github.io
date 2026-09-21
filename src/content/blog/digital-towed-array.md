@@ -5,7 +5,7 @@ pubDate: 2026-09-08
 tags: ["signal-processing", "acoustics", "TinyML"]
 ---
 
-This article includes research done in collaboration by me and Supun Randeni, head research scientist of MIT Sea Grant. Much of the content here will be included in a paper publishing in the Fall of 2027.  
+This article includes research done in collaboration by me and Supun Randeni. Much of the content here will be included in a paper publishing in the Fall of 2027.  
 
 A Towed Array is a long array of sensors that gets dragged behind large vessels at sea (ships, submarines). Its primary purpose is to detect the presence of a particular signal, and find what direction it's coming from. In submarines for example, a towed array is used to detect the presence of other submarines. 
  
@@ -47,7 +47,7 @@ Then find the sum of all power transmitted omni-directionally
 - $P(\theta_{1})$, $P(\theta_{2}) \dots , P(\theta_{M})$
 - where $M$ is the total amount of samples across the azimuth 
 
-Basically, by computing the energy from an omni-directional sample, we can find the direction that a signal comes from by finding the direction that has the most energy. 
+Basically, by computing the energy from an omni-directional sample, we can find the direction that a signal comes from by finding the direction that has the most energy. This is the essential formula for beamforming. 
 ## From Analog to Digital Towed Array (DTA)
 
 This research investigates the potential of a new architecture proposed by us: by offloading compute from the vehicle to each node in the array, we can reap a number of benefits.
@@ -84,7 +84,7 @@ One of the unique benefits of the Digital Towed Array architecture is the abilit
 2. Training Diversity
 	1. Each node gets trained independently from each other, so each node has its own parameters $\theta_{n}$. This increases the training diversity in the total neural network. We can also choose to re-use the parameters.
 3. "Group Huddle" Aggregation
-	1. Each node can output a one-hot encoding of its proposed solution. So even if one node or multiple nodes get the answer wrong, as long as the majority of the nodes agree on the correct answer, the system can classify correctly. This makes the Smart Towed Array more immune to disruptions from noise from the input signal. 
+	1. Each node can output a one-hot encoding of its proposed solution. So even if one node or multiple nodes get the answer wrong, as long as the majority of the nodes agree on the correct answer, the system can classify correctly. This makes the Smart Towed Array more immune to disruptions from noise from the input signal. We'll demonstrate the effectiveness of this approach later.
 
 Furthermore, our data is relatively simple to process, giving it an advantage in speed.
 - Each node needs to process $S_{N}$, which can be encoded as an $M \times 1$ vector $V$. We can then run $V$ through a DNN.  
@@ -92,8 +92,8 @@ Furthermore, our data is relatively simple to process, giving it an advantage in
 
 -------------------------------------------------------------------------
 
-Let's explain this method using a simpler example: a waveform classifier. We'll run through the interpretation, and then an example in python. Then we'll try to fit it on the STM32G431 that we're using.  
-
+Let's explain this method using a simpler example: a waveform classifier. We'll run through the interpretation, and then an example in python. Then we'll try to fit it on the STM32G431 that we're using. The general architecture of this simple example is broadly applicable to any input signals $S(t)$ that we want to classify, which is why it's useful to map out now. 
+ 
 Example: we want to classify three types of waveforms from input data: sine waves, square waves, and sawtooth waves.
 - Our input $S$ is a $100 \times 1$ vector that encodes the input signal from the analog front end. In this example, we're feeding artificial inputs. 
 - We will categorize $S$ by feeding it into an MLP. 
@@ -113,4 +113,4 @@ The neural net is an 8,643 parameter model containing 5 layers: the input layer 
 | 50    | 99.81%            | 98.53%        |
 
 
-So we can see that the model roughly converged in the first 10 epochs. This is a very simple example (that can easily fit on an STM32). 
+So we can see that the model roughly converged in the first 10 epochs. This is a very simple example (that can easily fit on an STM32). We can also see that the problem is too simple, given that it converged so quickly. 
