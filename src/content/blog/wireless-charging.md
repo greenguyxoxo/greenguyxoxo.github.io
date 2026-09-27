@@ -1,8 +1,8 @@
 ---
-title: "Wireless Charging"
-description: "Recharging a robot!"
+title: "Dynamic weakly-coupled magnetic resonance tracking"
+description: "Bare-metal stochastic gradient ascent"
 pubDate: 2026-09-08
-tags: ["hardware", "power-electronics"]
+tags: ["embedded"]
 ---
 
 UNDER CONSTRUCTION
